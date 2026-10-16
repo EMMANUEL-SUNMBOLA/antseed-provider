@@ -43,6 +43,7 @@ as we go.
 | [docs/04-earnings.md](docs/04-earnings.md) | P&L tracker + daily snapshot history |
 | [docs/05-value-proposition.md](docs/05-value-proposition.md) | What "add value" means and how we do it |
 | [agents/code-review/](agents/code-review/) | The `code-review` agent (manifest, persona, knowledge modules) |
+| [monitor/](monitor/) | Admin-only Telegram bot: status, daily overview, sales + health alerts |
 | [config.example.json](config.example.json) | Seller config template (no secrets; `apiKeyEnv` refers to `.env`) |
 | [antseed.json](antseed.json) | GitHub ownership-proof file (peer ID ↔ username) |
 | [.env.example](.env.example) | **Funding address + env var format** |

@@ -103,6 +103,33 @@ pm2 restart antseed-seller          # claims/verifications require restart
   without a reason (sanctions exposure is on the operator).
 - Restricted log-ins: keep `ufw allow 22/tcp` limited to known IPs where possible.
 
+## Telegram monitor (`monitor/`)
+
+Admin-only monitoring bot that lives in this repo and runs on the same box
+(PM2 name `antseed-monitor`). It reads `~/.antseed/metering.db` (read-only),
+on-chain ETH/USDC balances, the `antseed` CLI, and pm2/ports — then pushes
+alerts and answers commands for **one** admin chat only.
+
+```bash
+pm2 start /root/workspace/antseed-provider/monitor/index.js \
+    --name antseed-monitor --cwd /root/workspace/antseed-provider/monitor
+pm2 logs antseed-monitor
+pm2 restart antseed-monitor
+```
+
+- **Secrets:** no token is stored in this repo. It reuses the retired FactCheck
+  bot token (`/root/workspace/FactCheck/.env`) and the admin chat id from
+  `cavedl-tgbot/.env`, both read at runtime; override via `monitor/.env`.
+- **Commands:** `/status` `/antseed` `/today` `/sales` `/balance` `/problems`
+  `/help` `/id`.
+- **Alerts:** seller down / not listening / not seeding, low gas, upstream
+  (DeepSeek) failure, no requests for 48 h, traffic spike, and per-minute
+  sales activity (✅ served / ❌ failed / earned).
+- **Daily overview:** pushed at 00:05 UTC (requests, ✅/❌, tokens, USDC earned,
+  USDC left, ETH left).
+- Poll cadence: health every 5 min (`CHECK_INTERVAL_MS`), sales DB every 1 min
+  (`ACTIVITY_INTERVAL_MS`). Set these in `monitor/.env` (see `.env.example`).
+
 ## Snapshot / monitoring cron
 
 Installed for root (daily earnings snapshot at 00:05 UTC; `snapshot-earnings.sh`

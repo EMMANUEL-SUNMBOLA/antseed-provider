@@ -1,0 +1,6 @@
+# Secrets / local state — never commit
+.env
+state.json
+logs/
+node_modules/
+*.log

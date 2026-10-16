@@ -1,0 +1,19 @@
+{
+  "name": "antseed-monitor",
+  "version": "1.0.0",
+  "description": "Admin-only Telegram monitor for the Antseed seller: earnings, usage, sales and problem alerts",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "server": "git pull && npm i && (pm2 restart antseed-monitor || pm2 start index.js --name antseed-monitor) && pm2 save"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.67.0"
+  }
+}
