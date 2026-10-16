@@ -121,7 +121,8 @@ pm2 restart antseed-monitor
   bot token (`/root/workspace/FactCheck/.env`) and the admin chat id from
   `cavedl-tgbot/.env`, both read at runtime; override via `monitor/.env`.
 - **Commands:** `/status` `/antseed` `/today` `/sales` `/balance` `/problems`
-  `/help` `/id`.
+  `/help` `/id`. Each posts a `⏳ …` placeholder and edits it in place with the
+  result (with a typing action while working), so the chat stays tidy.
 - **Alerts:** seller down / not listening / not seeding, low gas, upstream
   (DeepSeek) failure, no requests for 48 h, traffic spike, and per-minute
   sales activity (✅ served / ❌ failed / earned).

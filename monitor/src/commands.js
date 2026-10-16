@@ -37,15 +37,50 @@ function safeSend(bot, text, options = {}) {
     });
 }
 
+// FactCheck-style progress: post a placeholder, then replace it in place with the
+// result so the chat stays tidy. cavedl-tgbot-style typing action while we work.
+async function runWithLoading(bot, loadingLabel, fn) {
+  bot.sendChatAction(ADMIN_CHAT_ID, "typing").catch(() => {});
+  let placeholder = null;
+  try {
+    placeholder = await bot.sendMessage(ADMIN_CHAT_ID, loadingLabel, {
+      parse_mode: "HTML",
+    });
+  } catch (error) {
+    console.error("loading message failed:", error.message);
+  }
+
+  const deliver = async (text) => {
+    if (!placeholder) return safeSend(bot, text);
+    try {
+      await bot.editMessageText(text, {
+        chat_id: ADMIN_CHAT_ID,
+        message_id: placeholder.message_id,
+        parse_mode: "HTML",
+      });
+    } catch (error) {
+      console.error("editMessageText failed:", error.message);
+      await safeSend(bot, text);
+    }
+  };
+
+  try {
+    await deliver(await fn());
+  } catch (error) {
+    console.error("command failed:", error);
+    await deliver(`⚠️ Command failed: <code>${escapeHtml(error.message)}</code>`);
+  }
+}
+
 export function registerCommands(bot) {
-  const handler = (fn) => async (msg) => {
+  const handler = (fn, loadingLabel) => async (msg) => {
     if (!isAdmin(msg)) {
       console.log(`ignored message from chat ${msg.chat?.id} (not admin)`);
       return;
     }
+    if (loadingLabel) return runWithLoading(bot, loadingLabel, fn);
     try {
-      const text = await fn();
-      await safeSend(bot, text);
+      await safeSend(bot, await fn());
     } catch (error) {
       console.error("command failed:", error);
       await safeSend(
@@ -57,13 +92,25 @@ export function registerCommands(bot) {
 
   bot.onText(/^\/(help|start)\b/, handler(async () => HELP));
 
-  bot.onText(/^\/(status|antseed)\b/, handler(buildStatusMessage));
+  bot.onText(
+    /^\/(status|antseed)\b/,
+    handler(buildStatusMessage, "⏳ Checking seller status…"),
+  );
 
-  bot.onText(/^\/today\b/, handler(buildTodayMessage));
+  bot.onText(
+    /^\/today\b/,
+    handler(buildTodayMessage, "⏳ Crunching today's usage…"),
+  );
 
-  bot.onText(/^\/sales\b/, handler(buildSalesMessage));
+  bot.onText(
+    /^\/sales\b/,
+    handler(buildSalesMessage, "⏳ Fetching recent activity…"),
+  );
 
-  bot.onText(/^\/balance\b/, handler(buildBalanceMessage));
+  bot.onText(
+    /^\/balance\b/,
+    handler(buildBalanceMessage, "⏳ Reading balances…"),
+  );
 
   bot.onText(
     /^\/problems\b/,
@@ -77,7 +124,7 @@ export function registerCommands(bot) {
           (p) => `${p.level === "critical" ? "🔴" : "🟠"} ${p.text}`,
         ),
       ].join("\n");
-    }),
+    }, "⏳ Running health checks…"),
   );
 
   bot.onText(
