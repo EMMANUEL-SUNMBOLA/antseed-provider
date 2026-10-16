@@ -1,0 +1,69 @@
+{
+  "identity": {
+    "displayName": "CaveDL Code Review"
+  },
+  "seller": {
+    "publicAddress": "ant.cavedl.xyz:6882",
+    "agentDir": {
+      "code-review": "/root/workspace/antseed-provider/agents/code-review"
+    },
+    "providers": {
+      "deepseek": {
+        "plugin": "openai",
+        "baseUrl": "https://api.deepseek.com",
+        "apiKeyEnv": "DEEPSEEK_API_KEY",
+        "services": {
+          "code-review": {
+            "upstreamModel": "deepseek-flash",
+            "categories": ["coding", "code-review"],
+            "pricing": {
+              "inputUsdPerMillion": 0.8,
+              "cachedInputUsdPerMillion": 0.08,
+              "outputUsdPerMillion": 2
+            },
+            "capabilities": {
+              "contextWindow": 1000000,
+              "maxOutputTokens": 384000,
+              "inputs": ["text"],
+              "outputs": ["text"],
+              "reasoning": true,
+              "toolUse": true,
+              "structuredOutput": true
+            }
+          },
+          "deepseek-v4-flash": {
+            "upstreamModel": "deepseek-flash",
+            "categories": ["chat", "coding"],
+            "pricing": {
+              "inputUsdPerMillion": 0,
+              "cachedInputUsdPerMillion": 0,
+              "outputUsdPerMillion": 0
+            },
+            "capabilities": {
+              "contextWindow": 1000000,
+              "maxOutputTokens": 384000,
+              "inputs": ["text"],
+              "outputs": ["text"],
+              "reasoning": true,
+              "toolUse": true,
+              "structuredOutput": true
+            }
+          }
+        }
+      }
+    },
+    "freeTier": {
+      "maxRequestsPerAddress": 5,
+      "maxRequestsPerIp": 20,
+      "windowMs": 86400000
+    },
+    "verifications": {
+      "domains": [
+        { "domain": "ant.cavedl.xyz", "methods": ["dns-txt"] }
+      ],
+      "github": [
+        { "username": "EMMANUEL-SUNMBOLA", "repository": "antseed-provider" }
+      ]
+    }
+  }
+}

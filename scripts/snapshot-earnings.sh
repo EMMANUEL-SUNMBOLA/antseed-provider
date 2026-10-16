@@ -8,8 +8,9 @@ mkdir -p data
 
 [ -f /root/.antseed/.env ] && { set -a; source /root/.antseed/.env; set +a; }
 
-snap="$(antseed seller status --json 2>/dev/null || echo '{}')"
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-printf '{"ts":"%s","status":%s}\n' "$ts" "$snap" >> data/earnings.jsonl
+antseed seller status --json 2>/dev/null \
+  | jq -c --arg ts "$ts" '{ts: $ts, status: .}' >> data/earnings.jsonl \
+  || { printf '{"ts":"%s","status":{}}\n' "$ts" >> data/earnings.jsonl; }
 
 echo "snapshot written: $ts"

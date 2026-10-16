@@ -14,9 +14,12 @@ set -a; source /root/.antseed/.env; set +a
 
 ## Start / stop / restart (PM2 — same as the other services on this box)
 
+The wrapper `scripts/run-seller.sh` sources `~/.antseed/.env` at runtime and
+execs `antseed seller start`, so no secret lives in the PM2 process list:
+
 ```bash
-set -a; source /root/.antseed/.env; set +a
-pm2 start --name antseed-seller --kill-timeout 10000 -- antseed seller start
+pm2 start /root/workspace/antseed-provider/scripts/run-seller.sh \
+    --name antseed-seller --interpreter bash
 pm2 logs antseed-seller
 pm2 restart antseed-seller
 pm2 stop antseed-seller
@@ -60,14 +63,18 @@ bash scripts/check-node.sh         # all-in-one: ports, gas, DNS, doctor
 | 6881 | UDP | DHT discovery |
 | 6882 | TCP | buyer connections (announced as `ant.cavedl.xyz:6882`) |
 
+On this box **`ufw` is not installed**; nftables `inet filter` input policy is
+`accept`, so the ports are open at the OS level. If a host firewall is ever
+enabled, add:
+
 ```bash
-sudo ufw allow 6881/udp
-sudo ufw allow 6882/tcp
-sudo ufw status
+ufw allow 6881/udp
+ufw allow 6882/tcp
 ```
 
-**Warning:** ufw on a shared box — check existing rules first and only ADD;
-never reset. Port 22/80/443 must stay open (nginx, ssh).
+**Warning:** on a shared box — check existing rules first and only ADD; never
+reset. Port 22/80/443 must stay open (nginx, ssh). Also check the VPS provider's
+cloud-firewall panel separately.
 
 ## After any config change
 
@@ -98,8 +105,10 @@ pm2 restart antseed-seller          # claims/verifications require restart
 
 ## Snapshot / monitoring cron
 
-```bash
-crontab -e
-# daily earnings snapshot at 00:05 UTC
-5 0 * * * /root/workspace/antseed-provider/scripts/snapshot-earnings.sh >> /root/workspace/antseed-provider/data/earnings.jsonl 2>&1
+Installed for root (daily earnings snapshot at 00:05 UTC; `snapshot-earnings.sh`
+compacts the pretty-printed JSON with `jq -c` so the file is valid JSONL):
+
+```cron
+PATH=/root/.nvm/versions/node/v24.14.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+5 0 * * * /root/workspace/antseed-provider/scripts/snapshot-earnings.sh >> /var/log/antseed-earnings.log 2>&1
 ```
