@@ -1,0 +1,9 @@
+.env
+*.env
+!.env.example
+data/
+node_modules/
+*.key
+identity.key
+metering.db
+*.log
