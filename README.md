@@ -36,6 +36,7 @@ as we go.
 
 | File | What it is |
 |---|---|
+| [AGENTS.md](AGENTS.md) | Project guide + living plan: network mechanics, market, strategy, decisions |
 | [docs/00-research.md](docs/00-research.md) | Network research: size, leaderboards, earnings reality |
 | [docs/01-plan.md](docs/01-plan.md) | Strategy, phases, pricing rules, $50/mo math |
 | [docs/02-setup-log.md](docs/02-setup-log.md) | Chronological setup log (commands + outputs) |
@@ -55,6 +56,9 @@ as we go.
 2. Real credentials live only in `/root/.antseed/.env` (git-ignored) or env vars.
 3. `config.json` may reference env var *names* (`apiKeyEnv`) but never key values.
 4. This repo is **public** — assume everything in it is world-readable.
+5. **`scripts/` is server-local and intentionally not in this repo** (it contains
+   a private-key exporter and other host helpers). It is git-ignored; keep it on
+   the VPS only.
 
 ## Quick reference
 
@@ -68,7 +72,7 @@ antseed seller status --json
 
 # health
 antseed seller doctor
-bash scripts/check-node.sh
+bash scripts/check-node.sh        # scripts/ is server-local (not in this repo)
 
 # network presence
 antseed network browse

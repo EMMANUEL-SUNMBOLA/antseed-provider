@@ -4,6 +4,10 @@ Node identity: `0x5473831A3142d912FdF88495e17c08b2a6fc37Ec`
 Data dir: `~/.antseed/` (config.json, identity.key, metering.db, plugins/)
 Env file: `/root/.antseed/.env` (git-ignored)
 
+> **`scripts/` is server-local and intentionally NOT in the public repo** (it
+> includes a private-key exporter and host helpers). The paths referenced below
+> exist on the VPS only; find them at `/root/workspace/antseed-provider/scripts/`.
+
 ## Load environment
 
 The CLI reads secrets from **process env only**. Always prefix seller commands:
