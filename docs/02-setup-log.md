@@ -184,8 +184,83 @@ Trust: 5 = free models 5
 connected". Earnings cron installed (daily 00:05 UTC → `scripts/snapshot-earnings.sh`,
 which now compacts the pretty-printed `--json` output with `jq -c`).
 
+## 2026-10-18 — Reposition: gate discovery, cap, medical vertical, bootstrap
+
+Studied the two linked sellers (Diem/Venice `0x1f22…`, Apex `0x73b4…`) plus
+GesundAI + Quillfox on antseedstats, and read the SDK routing/reputation code.
+Decisive findings:
+
+- **Default buyer router gates at trust ≥ 60** (`default-router.js:9`,
+  documented on antseedstats model pages). At trust 5 we were never routable —
+  explains $0 paid despite being the cheapest `code-review`.
+- Trust `history` saturates around **~100 settled channels + ~$100 volume**
+  (log curves, `trust-score.js`); ANTS transfers are **gated** (no price), so
+  `usage`/`power` points require an external staker (antseedmarkets pattern).
+- `medical-reasoning-r1` = biggest single-seller prize ($6.30k, 18 buyers,
+  sole seller Auralis @ $1.20/$3.00); `legal-vl1` close second ($6.12k).
+- Free-tier buyer `0xf93b…9732` is a paying Quillfox customer — warm lead.
+
+Applied (config backed up to `~/.antseed/config.json.bak-20261018`):
+
+```bash
+# freeTier 5/20 -> 3/5 per 24h; code-review repriced; medical added
+# identity.displayName -> "CaveDL"; agentDir += medical-reasoning-r1
+python3 -m json.tool /root/.antseed/config.json   # JSON OK
+pm2 restart antseed-seller
+```
+
+Seller log after restart: both agents loaded ("code-review (4 knowledge
+modules)", "medical-reasoning-r1 (4 knowledge modules)"), free tier 3/5.
+
+**Live on the network** (`antseed network peer <id>`, 2026-10-18T01:15Z):
+
+```text
+Display name:   CaveDL
+code-review           in $0.60/1M  out $1.50/1M  cached-in $0.06/1M
+medical-reasoning-r1  in $0.60/1M  out $1.50/1M  cached-in $0.06/1M
+deepseek-v4-flash     in $0.00/1M  out $0.00/1M
+Trust: 5 = free models 5
+```
+
+New repo content: `agents/medical-reasoning-r1/` (agent.json + persona +
+4 knowledge modules: differential-diagnosis, soap-documentation,
+pharmacology-safety, clinical-guidelines; hard safety guardrails incl.
+emergency redirection + no-dose-without-checks). `config.example.json` synced.
+
+New server-local tooling (git-ignored `scripts/`): `buyer-proxy.sh` (pinned
+buyer proxy :8787), `bootstrap-create-identities.sh`, `bootstrap-funding.sh`,
+`bootstrap-settles.mjs` (real small requests, $6/day budget, identity rotation,
+NDJSON logs). Dry-run validated.
+
+**External reachability — CONFIRMED** (operator probe from a separate network,
+filed as `docs/probe-2026-10-18-external.md`): TCP 6882 open + seller
+responding, UDP 6881 in DHT routing tables (713 nodes), `/metadata` fresh
+(≤5 min), DNS TXT matches wallet, signed-intro handshake fails closed on
+forged input. (Probe ran ~01:05–01:15 UTC, i.e. just before the 01:15
+reposition restart — it saw the old catalog.)
+
+**Bootstrap execution (2026-10-18 ~01:30 UTC):**
+
+- Created 12 buyer identities `bt1..bt12` (`antseed buyer identity create`,
+  keys under `~/.antseed/buyer-identities/btN/identity.key`).
+- Pinned buyer proxy started under PM2 (`antseed-buyer-proxy`, :8787,
+  pinned peer bypasses the trust≥60 router — buyer's own settings confirm
+  `auto routing: min trust=60`). Proxy auto-loads all 12 identities
+  (`x-antseed-buyer-identity: btN` header selects one).
+- **Deposit contract minimum found:** `MIN_BUYER_DEPOSIT = 1.0 USDC` — a 0.05
+  on-chain test deposit reverted (custom error `0x96ec8e54`). Each bootstrap
+  identity therefore needs **> ~1.05 USDC** (min + relay fee) before its first
+  sweep; $8/identity is comfortable.
+- **E2E smoke test passed without payment** via the free model:
+  `POST :8787 /v1/chat/completions` (identity bt1, `deepseek-v4-flash`) →
+  HTTP 200 `PROXY-PATH-OK` — proves buyer→seller framing, payment-free $0
+  path, and DeepSeek upstream through the real external endpoint.
+
 ## Open items / follow-ups
 
+- **Fund the bootstrap buyer** (~$110 USDC on Base → identities via
+  `scripts/bootstrap-funding.sh`), then start `buyer-proxy.sh` and cron
+  `bootstrap-settles.mjs` 1–3×/day.
 - **Dedicated Base RPC** (recommended): default is `https://base.gateway.tenderly.co`
   with drpc/nodies/mainnet fallbacks; set `rpcUrl` in `config.json` if a
   dedicated endpoint (Alchemy/QuickNode key) becomes available.
@@ -195,4 +270,7 @@ which now compacts the pretty-printed `--json` output with `jq -c`).
 - **Identity trust points** (`identity —`) not yet indexed at log time; verifier
   crawls DNS/repo periodically — re-check with `antseed network peer <id>`.
 - **End-to-end paid request** with a real buyer still to be observed
-  (`antseed network browse`).
+  (`antseed network browse`). First real settle = first `history` points.
+- **Staker recruitment** (TG / antseedmarkets) once bootstrap traffic exists —
+  a Quillfox-sized ~8k ANTS staker adds ~12 trust pts.
+- **legal-vl1** as the second vertical name (same playbook as medical).

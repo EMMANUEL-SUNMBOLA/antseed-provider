@@ -25,15 +25,16 @@ shared VPS, and for the decisions we're still weighing. Read this first; the
 Runtime lives on the VPS at `/root/workspace/antseed-provider/`. The seller
 process and its secrets live outside the repo under `/root/.antseed/`.
 
-## Live node (as of 2026-10-16)
+## Live node (as of 2026-10-18)
 
 | | |
 |---|---|
 | Wallet / peer ID | `0x5473831A3142d912FdF88495e17c08b2a6fc37Ec` (peer: no `0x`) |
 | Agent ID (ERC-8004) | `157681` (mint tx `0x26c561f12...cc9e`) |
 | Public endpoint | `ant.cavedl.xyz:6882` (TCP 6882, UDP 6881 DHT) |
-| Upstream | DeepSeek official API (`https://api.deepseek.com`) |
-| Services | `code-review` $0.80/$0.08c/$2.00 per 1M · free `deepseek-v4-flash` |
+| Upstream | DeepSeek official API (`https://api.deepseek.com`; `deepseek-flash` + `deepseek-v4-pro`) |
+| Services | `code-review` + `medical-reasoning-r1` $0.60/$0.06c/$1.50 per 1M · free `deepseek-v4-flash` |
+| Free tier caps | 3 req/addr · 5 req/IP per 24h (tightened 2026-10-18) |
 | Claims | DNS TXT (`ant.cavedl.xyz`) + GitHub (`antseed.json`) |
 | PM2 | `antseed-seller` (wrapper) + `antseed-monitor` |
 | State | `seeding`, `eligible: true`, `mode: recognized-usage`, 0 stake, 0 pool |
@@ -70,39 +71,59 @@ pm2 save
 
 ## How the network picks sellers (the decisive mechanics)
 
-1. **Price first, then reputation.** The default buyer router sorts candidate
-   peers by cheapest input price, *then* reputation, then latency
-   (`@antseed/node/dist/routing/default-router.js:13`). A `$0` service sorts
-   ahead of every paid one — this is why the free tier receives traffic.
+1. **Trust gate FIRST, then price.** The default buyer router (what the VPR
+   desktop app ships with) **drops any seller below trust ≥ 60**, *then* sorts
+   the survivors by cheapest input price, then reputation, then latency
+   (`@antseed/node/dist/routing/default-router.js:9`; gate documented on
+   antseedstats model pages). At trust 5 we are **invisible to every
+   default-routed paid request** — being cheapest changes nothing until we
+   cross 60. The `$0` free path is exempt (18 free buyers arrived at trust 5).
 2. **Trust score** (`@antseed/node/dist/reputation/trust-score.js`) — 0–100:
-   - `history` 50 — settled channels + USDC volume.
+   - `history` 50 — log curves over **settled channels (target 100)** and
+     **settled volume (target $100)**, halved then summed.
    - `usage` 20 — share of pool recognized-usage points. **Needs an ANTS-staked pool.**
    - `power` 10 — share of lock-weighted staking power. **Needs a pool.**
    - `identity` 20 — buyer-verified history (GitHub ≤70 / domain ≤12 sub-points).
    - `freeModels` +5 — bonus for offering any model at $0.
    - We forfeit `usage` + `power` (30 pts) without staking; identity stays
      unclaimed until a **buyer** verifies our DNS/GitHub claims.
+   - **ANTS transfers are gated (no market price)** — points can't be bought;
+     pools get staked into by external stakers (see "antseedmarkets").
 3. **Discovery** is by exact **model/service name** plus category tags
    (`coding`, `legal`, `privacy`, `finance`, `uncensored`, `tee`). Buyers
    request a model id and the router picks among peers offering it.
-4. **Consequence:** sitting and "building trust" is weak — price beats
-   reputation for selection. To win paid volume you must be **cheapest for a
-   model** or offer a **name with demand that few others serve**.
+4. **Consequence:** the sequence is: free/pinned traffic → first settles →
+   `history` pts → staker(s) → cross 60 → routing flywheel. Only after 60 does
+   price competition start.
 
-## Market snapshot (2026-10-16, 73 peers)
+## Market snapshot (2026-10-18, antseedstats.com)
 
-| Service | Peers | Median in/out | Sessions | Volume |
+| Service | Sellers | Price in/out | Settled | Buyers |
 |---|---|---|---|---|
-| `medical-reasoning-r1` | **1** | $1.20 / $3.00 | 6,951 | **$7,204** |
-| `legal-vl1` | 1 | $1.20 / $3.00 | 4,461 | $6,921 |
-| `code-review` (competitor) | 1 | $1.20 / $3.00 | 63 | $2,008 |
-| `deepseek-v4-flash` | 9 (2 free) | $0.048 / $0.12 | 10,107 | $14.2k |
-| `deepseek-v4-flash-0731` | 7 | $0.064 / $0.13 | 7,779 | $9.6k |
+| `medical-reasoning-r1` | **1** (Auralis, rep 62.7) | $1.20 / $3.00 | **$6.30k** (5.05B tok, 109k req) | 18 |
+| `legal-vl1` | 1 (Auralis, rep 62.1) | $1.20 / $3.00 | $6.12k (4.65B tok, 87k req) | 16 |
+| `code-review` | 2 (SecretAI-TDX $0.03/$0.12 rep 61.8; Quillfox $1.20/$3.00 rep 60.3) | $0.03–$1.20 | $6.66k total (3.53B tok, 229k req) | 18 |
+| Frontier names (Kimi K3, GPT-5.6 Sol, Opus 5.5, GPT-6 Astra…) | 15–39 each | race to bottom | 90%+ of network $ volume | 80–140 each |
 
 Two money patterns: **single-seller vertical agents** at $1.20/$3.00 (medical
-and legal are near-monopolies), or **high-volume commodity resale** (thin
-margins, 7–13 competitors). Our `code-review` sits in a weak niche (63 sessions
-network-wide) and currently earns $0.
+and legal are near-monopolies run by the same Auralis operator), or
+**high-volume frontier resale** (multi-upstream, deep discounts, ANTS pools).
+Quillfox proves a **one-model vertical** can do $2.01k/month from 9 buyers.
+
+## Competitor playbooks (studied 2026-10-18)
+
+- **Apex** (`0x73b4…`, rank #14, $1.43k/wk): 108 models, −53…−67% discounts,
+  24.6B **free** tokens to 2,285 buyers (top of funnel → usage points),
+  193k ANTS pool + 309k self-locked → 12.5k ANTS usage rewards/epoch.
+- **Diem/Venice** (`0x1f22…`, rank #11, $183/wk): 84 models ~40% under list,
+  211 buyers since Apr, rep 69.3 incl. 4.8 identity(github).
+- **GesundAI** (since Sep 15 — one month, $750/wk, rep 72): only 13 models,
+  frontier undercuts via `anthropic-messages` + `openai-responses`, 156k ANTS
+  pool (22.9% network power) → 17.5k ANTS staker rewards/epoch.
+- **Quillfox** (our template): ONE model (`code-review`), $2.01k in a month,
+  9 buyers, gate crossed with history 47.5 + one 7.95k ANTS staker.
+- Free-tier buyer `0xf93b…9732` **already pays Quillfox** for code-review —
+  warm lead for pinning us.
 
 ---
 
@@ -121,9 +142,23 @@ network-wide) and currently earns $0.
 - **2026-10-16 — Freeze.** Do **not** change provider config for 24h, and do
   **not** remove the free model: we just started and the `+5` freeModels trust
   bonus is worth protecting over a small short-term token cost.
-- **Deferred:** choose among A–D after the 24h window. Note **A′ keeps the +5**
-  (the bonus only requires offering *a* $0 model, not its cap size), so it is
-  the preferred lever if the bleed gets expensive before the window ends.
+- **2026-10-18 — Experiment closed; strategy set.** Window results: 48 free
+  requests, 17 buyers, 4.29M tokens, 0 paid, $0 earned, ~$0.39 upstream
+  (guardrails never tripped). Root-cause finding: the default buyer router
+  gates at trust ≥ 60 — at trust 5 we were never routable, so price/niche
+  were irrelevant. **Decisions (user-approved):**
+  - **A′** — free tier capped 3/addr · 5/IP per 24h (keeps the +5).
+  - Reposition pricing at **50% under competitors**: `code-review` →
+    $0.60/$0.06c/$1.50 (Quillfox $1.20/$3.00).
+  - **B — medical**: launch `medical-reasoning-r1` at $0.60/$0.06c/$1.50
+    (incumbent Auralis $1.20/$3.00; biggest single-seller prize at $6.30k,
+    vs legal $6.12k). DeepSeek-v4-pro upstream, new agent
+    (`agents/medical-reasoning-r1/`, 4 knowledge modules, hard safety
+    guardrails).
+  - **Bootstrap the gate**: pinned self-buyer settles (~$100 volume across
+    many buyer identities → `history` pts) + TG/antseedmarkets presence to
+    recruit a staker. Server-local tooling in `scripts/bootstrap-*.sh|mjs`;
+    needs ~$110 USDC float (user-funded).
 
 ## 24h experiment (T0 = 2026-10-16T20:06Z)
 
@@ -146,6 +181,12 @@ act early with **A′** (cap the free tier — the +5 survives).
 - Zero paid demand + farming continues → **A′/A** (cap or cut free).
 - Paid hits on `code-review` → tune price / lean in.
 - Any free→paid conversion → **keep free**, invest more.
+
+**Result (window T0 → T0+24h, closed 2026-10-17T20:06Z):** 48 requests (0
+errors), 4,289,488 tokens (4.27M in / 17k out), 17 buyers, all free
+`deepseek-v4-flash`, **$0 earned**. Cumulative since go-live: 70 requests /
+6.62M tokens / 19 buyers; guardrails (10M tok, $2) never tripped; DeepSeek
+balance $19.61/$20. Zero free→paid conversions → decision branch: **A′ + B**.
 
 ---
 
@@ -183,6 +224,7 @@ daily overview 00:05 UTC. See `docs/03-operations.md`.
 | `docs/03-operations.md` | Runbook (PM2, ports, gas, monitor) |
 | `docs/04-earnings.md` | Daily snapshots + P&L |
 | `docs/05-value-proposition.md` | Why differentiated services, not raw resale |
+| `docs/probe-2026-10-18-external.md` | Operator's from-outside reachability probe (verdict: live) |
 
 ## Related services on this box
 

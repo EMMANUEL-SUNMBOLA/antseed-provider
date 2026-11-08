@@ -11,7 +11,8 @@ as we go.
 ## Live node
 
 **Status: live** — registered on-chain, seeding on the DHT, advertising a premium
-`code-review` agent + a free `deepseek-v4-flash` tier.
+`code-review` agent, a premium `medical-reasoning-r1` agent, and a free
+`deepseek-v4-flash` tier.
 
 | | |
 |---|---|
@@ -20,7 +21,7 @@ as we go.
 | Public endpoint | `ant.cavedl.xyz:6882` (TCP 6882, UDP 6881 DHT) |
 | Domain claims | `ant.cavedl.xyz` (DNS TXT), GitHub (`antseed.json`) |
 | Upstream | DeepSeek official API (`https://api.deepseek.com`) |
-| Services | `code-review` $0.80/$0.08c/$2.00 per 1M · `deepseek-v4-flash` free |
+| Services | `code-review` + `medical-reasoning-r1` $0.60/$0.06c/$1.50 per 1M · free `deepseek-v4-flash` (3 req/addr · 5 req/IP per 24h) |
 | VPS | Ubuntu 24.04, Xeon Gold 6138 (80t), 6 GB RAM, no GPU — shared with other services |
 | Target | ~$50/month net after upstream costs |
 

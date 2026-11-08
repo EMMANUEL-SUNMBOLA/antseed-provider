@@ -1,11 +1,12 @@
 {
   "identity": {
-    "displayName": "CaveDL Code Review"
+    "displayName": "CaveDL"
   },
   "seller": {
     "publicAddress": "ant.cavedl.xyz:6882",
     "agentDir": {
-      "code-review": "/root/workspace/antseed-provider/agents/code-review"
+      "code-review": "/root/workspace/antseed-provider/agents/code-review",
+      "medical-reasoning-r1": "/root/workspace/antseed-provider/agents/medical-reasoning-r1"
     },
     "providers": {
       "deepseek": {
@@ -17,9 +18,40 @@
             "upstreamModel": "deepseek-flash",
             "categories": ["coding", "code-review"],
             "pricing": {
-              "inputUsdPerMillion": 0.8,
-              "cachedInputUsdPerMillion": 0.08,
-              "outputUsdPerMillion": 2
+              "inputUsdPerMillion": 0.6,
+              "cachedInputUsdPerMillion": 0.06,
+              "outputUsdPerMillion": 1.5
+            },
+            "capabilities": {
+              "contextWindow": 1000000,
+              "maxOutputTokens": 384000,
+              "inputs": ["text"],
+              "outputs": ["text"],
+              "reasoning": true,
+              "toolUse": true,
+              "structuredOutput": true
+            }
+          },
+          "medical-reasoning-r1": {
+            "upstreamModel": "deepseek-v4-pro",
+            "categories": [
+              "medical",
+              "clinical",
+              "healthcare",
+              "reasoning",
+              "diagnosis",
+              "differential-diagnosis",
+              "soap",
+              "drug-interactions",
+              "treatment-planning",
+              "clinical-reasoning",
+              "patient-history",
+              "evidence-based"
+            ],
+            "pricing": {
+              "inputUsdPerMillion": 0.6,
+              "cachedInputUsdPerMillion": 0.06,
+              "outputUsdPerMillion": 1.5
             },
             "capabilities": {
               "contextWindow": 1000000,
@@ -53,8 +85,8 @@
       }
     },
     "freeTier": {
-      "maxRequestsPerAddress": 5,
-      "maxRequestsPerIp": 20,
+      "maxRequestsPerAddress": 3,
+      "maxRequestsPerIp": 5,
       "windowMs": 86400000
     },
     "verifications": {
